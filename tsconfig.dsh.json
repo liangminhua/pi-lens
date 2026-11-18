@@ -1,0 +1,13 @@
+{
+	"extends": "./tsconfig.build.json",
+	"compilerOptions": {
+		"rootDir": "./dsh/src",
+		"outDir": "./dist/dsh",
+		"declaration": false,
+		"sourceMap": false,
+		"types": ["node"],
+		"allowJs": false
+	},
+	"include": ["dsh/src/**/*.ts"],
+	"exclude": ["node_modules", "tests", "dsh/tests"]
+}

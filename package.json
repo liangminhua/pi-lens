@@ -8,6 +8,14 @@
 		"url": "git+https://github.com/apmantza/pi-lens.git"
 	},
 	"main": "./dist/index.js",
+	"exports": {
+		".": "./dist/dsh/index.js",
+		"./pi": "./dist/index.js",
+		"./dsh": "./dist/dsh/index.js",
+		"./mcp/server": "./dist/mcp/server.js",
+		"./cordis.patch.yml": "./cordis.patch.yml",
+		"./package.json": "./package.json"
+	},
 	"bin": {
 		"pi-lens": "dist/mcp/cli.js",
 		"pi-lens-mcp": "dist/mcp/server.js",
@@ -15,7 +23,12 @@
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.build.json",
-		"build:dist": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && node scripts/build-dist-tsc.mjs tsconfig.dist.json && npm run bundle:dist",
+		"build:dist": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && node scripts/build-dist-tsc.mjs tsconfig.dist.json && node scripts/build-dist-tsc.mjs tsconfig.dsh.json && npm run bundle:dist",
+		"build:dsh": "node -e \"require('fs').rmSync('dist/dsh',{recursive:true,force:true})\" && node scripts/build-dist-tsc.mjs tsconfig.dsh.json",
+		"verify": "npm run build:dsh && npm run test:dsh && node scripts/verify-plugin.mjs .",
+		"verify:dsh": "node scripts/verify-plugin.mjs .",
+		"test:dsh": "node --test dsh/tests/*.test.mjs",
+		"pack:check": "npm pack --dry-run",
 		"bundle:dist": "node scripts/bundle-dist.mjs",
 		"prepare": "npm run build:dist && node scripts/download-grammars.js --core --dest grammars && node scripts/setup-git-hooks.mjs && node scripts/stamp-package-lock.mjs && node scripts/warm-loader-cache.mjs",
 		"prepack": "node scripts/strip-dev-deps-for-pack.mjs --strip",
@@ -88,7 +101,12 @@
 		"feedback",
 		"type-coverage",
 		"jscpd",
-		"knip"
+		"knip",
+		"deepseek-harness",
+		"dsh",
+		"dsh-plugin",
+		"cordis-plugin",
+		"mcp"
 	],
 	"author": "Apostolos Mantzaris",
 	"license": "MIT",
@@ -103,6 +121,10 @@
 		"dist/mcp/server.js",
 		"dist/mcp/analyze-cli.js",
 		"dist/mcp/worker.js",
+		"dist/dsh/",
+		"dsh/src/",
+		"cordis.patch.yml",
+		"scripts/verify-plugin.mjs",
 		"dist/workers/",
 		"dist/probes/",
 		"docs/",
@@ -139,11 +161,23 @@
 		"vscode-jsonrpc": "^10.0.0"
 	},
 	"peerDependencies": {
+		"@deepseek-ai/cordis": "^4.1.0",
+		"@deepseek-ai/dsh-tools": ">=0.0.1-rc.1 <0.3.0",
+		"@deepseek-ai/schemastery": "^3.19.0",
 		"@earendil-works/pi-coding-agent": "*",
 		"@earendil-works/pi-tui": "*",
 		"typebox": "^1.0.0"
 	},
 	"peerDependenciesMeta": {
+		"@deepseek-ai/cordis": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-tools": {
+			"optional": true
+		},
+		"@deepseek-ai/schemastery": {
+			"optional": true
+		},
 		"@earendil-works/pi-coding-agent": {
 			"optional": true
 		},
@@ -160,6 +194,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
+		"@deepseek-ai/schemastery": "^3.19.0",
 		"@earendil-works/pi-coding-agent": "^1.5.0",
 		"@earendil-works/pi-tui": "^1.5.0",
 		"@jridgewell/sourcemap-codec": "^1.6.0",
@@ -189,6 +224,46 @@
 		"typescript": "^7.0.2",
 		"typescript-language-server": "5.3.0",
 		"vitest": "^5.0.3"
+	},
+	"dsh": {
+		"bundle": {
+			"patch": "./cordis.patch.yml"
+		},
+		"adapterVersion": "1.0.0",
+		"capabilities": {
+			"services": [
+				"tools"
+			],
+			"extensionPoints": [
+				"apply",
+				"inject",
+				"Config",
+				"ctx.effect",
+				"ctx.tools.register"
+			],
+			"protocols": [
+				"mcp/stdio"
+			],
+			"tools": {
+				"dynamic": true,
+				"namespace": "pilens_",
+				"alwaysAvailable": [
+					"pilens_status"
+				]
+			},
+			"lifecycle": [
+				"PENDING",
+				"LOADING",
+				"ACTIVE",
+				"DEGRADED",
+				"UNLOADING",
+				"DISPOSED"
+			]
+		},
+		"requires": {
+			"host": "deepseek-harness",
+			"pluginStandard": ">=2.0.0"
+		}
 	},
 	"pi": {
 		"changelogPath": "CHANGELOG-USER.md",

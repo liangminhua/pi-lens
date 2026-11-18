@@ -1,0 +1,14 @@
+# pi-lens DSH bundle patch (DSH plugin standard §2.2).
+#
+# One insert over the profile root. The row `name` is the package name. The
+# root export is the DSH entry (`dist/dsh/index.js`); the pi extension lives at
+# `./pi` and is declared separately in `package.json#pi.extensions`. The row
+# `id` is the stable handle later bundle patches and the user's
+# `cordis.patch.yml` address when they override configuration.
+#
+# Config defaults come from the Schemastery `Config` schema in `dsh/src/plugin.ts`;
+# a profile may override any subset with a later patch row addressed by `id`.
+
+- insert:
+    - id: pi-lens
+      name: pi-lens

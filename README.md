@@ -6,7 +6,7 @@
 
 [![omp status](https://omppackages.com/badge/pi-lens.svg)](https://omppackages.com/packages/pi-lens)
 
-pi-lens gives AI coding agents fast, language-aware feedback while they write and edit code. It is an extension for the pi coding agent, with an experimental [MCP server](docs/mcp.md) for other hosts.
+pi-lens gives AI coding agents fast, language-aware feedback while they write and edit code. It is an extension for the pi coding agent, with an experimental [MCP server](docs/mcp.md) for other hosts and a native [DeepSeek Harness plugin](docs/dsh-plugin.md).
 
 > **An AI agent working with pi-lens?** Read the [agent guide](docs/agent-guide.md). It explains the findings you will see and how to respond.
 >
@@ -23,6 +23,20 @@ Or from git: `pi install git:github.com/apmantza/pi-lens`.
 Requirements: Node.js >=22.19.0 and a pi host of 0.86.1 or newer. On pi 0.80–0.85, pi-lens gives no findings, because those hosts keep the prompt where the extension cannot write to it. [Release QA baseline](docs/release-qa-baseline.md) lists the certified hosts. See [Troubleshooting](#troubleshooting) for npm v12, Android, and skills-manifest notes.
 
 Install it and start a session. The language servers and many linters start with no setup. Some tools need your project's config, and a few are opt-in. See [What runs by default](#what-runs-by-default) and [Settings](docs/settings.md).
+
+## DeepSeek Harness
+
+The same package is a DSH (DeepSeek Harness) plugin built on the Cordis plugin
+system. It requires the `tools` service, proxies the engine over MCP stdio, and
+registers every advertised `pilens_*` capability as a native DSH tool, plus
+`pilens_status` for health.
+
+```bash
+dsh plugin --profile tui add pi-lens
+```
+
+Configuration, lifecycle, protocol, packaging, and the compliance gate are in
+[DSH plugin](docs/dsh-plugin.md).
 
 To let a coding agent install it, paste this into its prompt:
 
