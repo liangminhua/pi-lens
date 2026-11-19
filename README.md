@@ -29,7 +29,9 @@ Install it and start a session. The language servers and many linters start with
 The same package is a DSH (DeepSeek Harness) plugin built on the Cordis plugin
 system. It requires the `tools` service, proxies the engine over MCP stdio, and
 registers every advertised `pilens_*` capability as a native DSH tool, plus
-`pilens_status` for health.
+`pilens_status` for health. Six slash commands (`/lens-status`, `/lens-health`,
+`/lens-toggle`, `/lens-tools`, `/lens-restart`, `/lens-config`) are available in
+the DSH command palette.
 
 ```bash
 dsh plugin --profile tui add pi-lens

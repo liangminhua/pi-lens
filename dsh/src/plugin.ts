@@ -17,6 +17,11 @@
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import Schema from "@deepseek-ai/schemastery";
+import {
+	type CommandHost,
+	installCommands,
+	type PiLensCommandRuntime,
+} from "./commands.js";
 import { PluginLifecycle, type PluginLifecycleState } from "./lifecycle.js";
 import {
 	buildChildEnv,
@@ -41,7 +46,7 @@ export const adapterVersion = "1.0.0";
  * supplies the real context; this declaration keeps the build independent of
  * the harness's private type graph.
  */
-export interface PluginContext {
+export interface PluginContext extends CommandHost {
 	effect(
 		factory: () => void | (() => void | Promise<void>),
 		label?: string,
@@ -93,6 +98,7 @@ export const Config: Schema<Config> = Schema.object({
 interface RuntimeStatus {
 	lifecycle: PluginLifecycleState;
 	engine: string;
+	enabled: boolean;
 	pid?: number;
 	server: string;
 	cwd: string;
@@ -112,6 +118,7 @@ class PiLensRuntime {
 	private restartTimer: NodeJS.Timeout | null = null;
 	private failures = 0;
 	private restarts = 0;
+	private enabled = true;
 	private lastError: string | undefined;
 	private disposed = false;
 	tools: McpToolInfo[] = [];
@@ -185,6 +192,11 @@ class PiLensRuntime {
 		args: Record<string, unknown>,
 		signal?: AbortSignal,
 	): Promise<McpCallResult> {
+		if (!this.enabled) {
+			throw new Error(
+				"pi-lens is disabled for this session; run /lens-toggle to enable it",
+			);
+		}
 		if (signal?.aborted) throw new Error(`MCP call '${toolName}' aborted`);
 		if (this.disposed) throw new Error("pi-lens runtime is disposed");
 		if (this.client?.state !== "ready") await this.start();
@@ -201,6 +213,7 @@ class PiLensRuntime {
 		return {
 			lifecycle: this.lifecycle.state,
 			engine: this.state,
+			enabled: this.enabled,
 			pid: this.client?.pid,
 			server: this.serverPath,
 			cwd: this.workspace,
@@ -211,6 +224,29 @@ class PiLensRuntime {
 			lastError: this.lastError,
 			stderr: this.client?.stderr ?? [],
 		};
+	}
+
+	isEnabled(): boolean {
+		return this.enabled;
+	}
+
+	setEnabled(value: boolean): void {
+		this.enabled = value;
+	}
+
+	/** Replace the live MCP child and re-run the handshake. */
+	async restart(): Promise<void> {
+		if (this.disposed) throw new Error("pi-lens runtime is disposed");
+		if (this.restartTimer) {
+			clearTimeout(this.restartTimer);
+			this.restartTimer = null;
+		}
+		const client = this.client;
+		this.client = null;
+		this.state = "idle";
+		this.failures = 0;
+		if (client) await client.dispose();
+		await this.start();
 	}
 
 	async dispose(): Promise<void> {
@@ -325,6 +361,7 @@ function renderStatus(status: RuntimeStatus): string {
 		"pi-lens DSH adapter",
 		`lifecycle: ${status.lifecycle}`,
 		`engine: ${status.engine}`,
+		`enabled: ${status.enabled}`,
 		`protocol: ${status.protocolVersion ?? "unknown"}`,
 		`tools: ${status.tools}`,
 		`restarts: ${status.restarts}`,
@@ -388,6 +425,30 @@ export function apply(ctx: PluginContext, config: Config): void {
 		};
 
 		register(createStatusTool(runtime));
+		const commandView: PiLensCommandRuntime = {
+			status: () => runtime.status(),
+			statusText: () => renderStatus(runtime.status()),
+			getTools: () => runtime.tools.filter((tool) => registered.has(tool.name)),
+			isEnabled: () => runtime.isEnabled(),
+			setEnabled: (value) => runtime.setEnabled(value),
+			restart: () => runtime.restart(),
+			callTool: (toolName, args, signal) =>
+				runtime.callTool(toolName, args, signal),
+			config: {
+				serverPath: resolveServerPath(config),
+				cwd: resolveWorkspace(config),
+				includeTools: config.includeTools,
+				excludeTools: config.excludeTools,
+				startupTimeoutMs: config.startupTimeoutMs,
+				requestTimeoutMs: config.requestTimeoutMs,
+				restartOnCrash: config.restartOnCrash,
+				maxRestarts: config.maxRestarts,
+				maxTextChars: config.maxTextChars,
+				envKeys: Object.keys(config.env),
+				debug: config.debug,
+			},
+		};
+		const disposeCommands = installCommands(ctx, commandView);
 		lifecycle.transition("ACTIVE");
 		void runtime.start().catch((error: unknown) => {
 			process.stderr.write(
@@ -400,6 +461,7 @@ export function apply(ctx: PluginContext, config: Config): void {
 				lifecycle.transition("UNLOADING");
 			}
 			await runtime.dispose();
+			disposeCommands?.();
 			for (const dispose of disposers.reverse()) {
 				try {
 					dispose();

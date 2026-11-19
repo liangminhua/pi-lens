@@ -239,7 +239,9 @@
 				"inject",
 				"Config",
 				"ctx.effect",
-				"ctx.tools.register"
+				"ctx.tools.register",
+				"ctx.inject(commands)",
+				"ctx.commands.register"
 			],
 			"protocols": [
 				"mcp/stdio"
