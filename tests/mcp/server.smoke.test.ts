@@ -1099,6 +1099,8 @@ const PINNED_REFUSALS: string[] = [
 	"pilens_module_report {cwds} -> cwd",
 	"pilens_module_report {maxRefsPerSymbols} -> maxRefsPerSymbol",
 	"pilens_module_report {views} -> view",
+	"pilens_project_map {Cwd} -> cwd",
+	"pilens_project_map {cwds} -> cwd",
 	"pilens_project_report {Cwd} -> cwd",
 	"pilens_project_report {Focus} -> focus",
 	"pilens_project_report {Limit} -> limit",

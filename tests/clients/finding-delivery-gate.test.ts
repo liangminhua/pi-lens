@@ -1278,6 +1278,7 @@ const TOOL_CENSUS: Record<string, Classification> = {
 	latency: { noFindings: "dispatch timing records" },
 	rebuild: { noFindings: "the build command's outcome" },
 	project_scan: { delivers: ["lens-engine:project-scan"] },
+	project_map: { noFindings: "the written map's file path and counts" },
 	session_start: {
 		noFindings: "session guidance and the error-debt baseline's status line",
 	},

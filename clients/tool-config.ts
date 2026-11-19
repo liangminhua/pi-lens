@@ -123,6 +123,12 @@ export const TOOL_REGISTRY = [
 		disableable: true,
 	},
 	{
+		name: "project_map",
+		piName: undefined,
+		mcpName: "pilens_project_map",
+		disableable: true,
+	},
+	{
 		name: "rebuild",
 		piName: undefined,
 		mcpName: "pilens_rebuild",

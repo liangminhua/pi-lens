@@ -12,8 +12,9 @@
  * "external" kind nodes (third-party/stdlib import targets) are excluded from
  * the map outright — their count is surfaced in the header instead.
  *
- * Human-only surface: no agent tool, no MCP mirror. See index.ts's `lens-map`
- * command registration.
+ * Two surfaces share this generator: pi's `lens-map` command (see index.ts) and
+ * the `pilens_project_map` MCP tool, so a harness-side slash command can ask the
+ * engine for the same artifact without importing this module.
  */
 
 import * as fs from "node:fs";
@@ -1241,8 +1242,9 @@ function toDisplayPath(p: string, projectRoot: string): string {
  * lays it out, renders the self-contained HTML page, and writes it to disk
  * under `<project data dir>/reports/lens-map.html`. Unlike module_report's
  * read-only #256 contract, this path DOES build the graph on a cold cache —
- * the user explicitly asked for a map via `/lens-map`, so taking a few seconds
- * to build is an acceptable, expected cost (this is not a hot per-edit path).
+ * the user explicitly asked for a map (`/lens-map` or `pilens_project_map`), so
+ * taking a few seconds to build is an acceptable, expected cost (this is not a
+ * hot per-edit path).
  */
 export async function generateLensMap(
 	cwd: string,

@@ -34,6 +34,7 @@ import {
 } from "../tools/render-compact.js";
 import { AstGrepClient } from "../clients/ast-grep-client.js";
 import { CacheManager } from "../clients/cache-manager.js";
+import { generateLensMap } from "../clients/lens-map.js";
 import {
 	getDegradationSummary,
 	incrementDegradationCount,
@@ -795,6 +796,20 @@ const ALL_TOOLS = [
 		inputSchema: { type: "object", properties: {} },
 	},
 	{
+		name: "pilens_project_map",
+		description:
+			"Write a self-contained interactive HTML map of the project's file-level dependency graph and return its path plus counts. Example: regenerate it after a refactor and open the path in a browser.",
+		inputSchema: {
+			type: "object",
+			properties: {
+				cwd: {
+					type: "string",
+					description: "Project root. Defaults to the server's workspace.",
+				},
+			},
+		},
+	},
+	{
 		name: "pilens_effective_config",
 		description: translateGuidanceToolNames(
 			effectiveConfigTool.description,
@@ -1320,6 +1335,19 @@ async function callTool(
 				{ type: "text" as const, text: renderTextProjectReport(report) },
 			],
 		};
+	}
+
+	if (name === "pilens_project_map") {
+		const cwd = typeof args.cwd === "string" ? args.cwd : DEFAULT_CWD;
+		const map = await generateLensMap(cwd);
+		const lines = [
+			`Project map: ${map.fileCount} file(s), ${map.edgeCount} edge(s).`,
+			`Written to ${map.filePath}`,
+			map.truncated
+				? "Truncated at PI_LENS_MAP_MAX_NODES; raise it for the full graph."
+				: "",
+		];
+		return toolText(lines.filter(Boolean).join("\n"), map);
 	}
 
 	if (name === "pilens_read_symbol") {
