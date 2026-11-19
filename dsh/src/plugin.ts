@@ -434,19 +434,6 @@ export function apply(ctx: PluginContext, config: Config): void {
 			restart: () => runtime.restart(),
 			callTool: (toolName, args, signal) =>
 				runtime.callTool(toolName, args, signal),
-			config: {
-				serverPath: resolveServerPath(config),
-				cwd: resolveWorkspace(config),
-				includeTools: config.includeTools,
-				excludeTools: config.excludeTools,
-				startupTimeoutMs: config.startupTimeoutMs,
-				requestTimeoutMs: config.requestTimeoutMs,
-				restartOnCrash: config.restartOnCrash,
-				maxRestarts: config.maxRestarts,
-				maxTextChars: config.maxTextChars,
-				envKeys: Object.keys(config.env),
-				debug: config.debug,
-			},
 		};
 		const disposeCommands = installCommands(ctx, commandView);
 		lifecycle.transition("ACTIVE");

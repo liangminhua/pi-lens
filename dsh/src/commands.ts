@@ -20,20 +20,6 @@ export interface CommandStatusView {
 	readonly lastError?: string;
 }
 
-export interface CommandConfigView {
-	readonly serverPath: string;
-	readonly cwd: string;
-	readonly includeTools: readonly string[];
-	readonly excludeTools: readonly string[];
-	readonly startupTimeoutMs: number;
-	readonly requestTimeoutMs: number;
-	readonly restartOnCrash: boolean;
-	readonly maxRestarts: number;
-	readonly maxTextChars: number;
-	readonly envKeys: readonly string[];
-	readonly debug: boolean;
-}
-
 export interface PiLensCommandRuntime {
 	status(): CommandStatusView;
 	statusText(): string;
@@ -46,7 +32,6 @@ export interface PiLensCommandRuntime {
 		args: Record<string, unknown>,
 		signal?: AbortSignal,
 	): Promise<McpCallResult>;
-	config: CommandConfigView;
 }
 
 interface DshCommandResult {
@@ -179,10 +164,32 @@ function createDefinitions(
 			},
 		},
 		{
-			name: "lens-config",
+			name: "lens-map",
 			description:
-				"pi-lens: show the effective adapter configuration (environment values stay redacted).",
-			handler: () => success(renderConfig(runtime.config)),
+				"pi-lens: build the interactive HTML dependency map and print where it was written.",
+			handler: async (invocation) => {
+				const tool = runtime
+					.getTools()
+					.find((candidate) => candidate.name === "pilens_project_map");
+				if (!tool) {
+					return failure(
+						"pi-lens engine does not advertise pilens_project_map; rebuild the engine (npm run build:dist) and restart.",
+					);
+				}
+				try {
+					const result = await runtime.callTool(
+						"pilens_project_map",
+						{},
+						invocation.signal,
+					);
+					const text = resultText(result);
+					return result.isError === true ? failure(text) : success(text);
+				} catch (error) {
+					return failure(
+						`pi-lens map failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			},
 		},
 	];
 }
@@ -224,25 +231,8 @@ function renderTools(runtime: PiLensCommandRuntime): string {
 	return lines.join("\n");
 }
 
-function renderConfig(config: CommandConfigView): string {
-	return [
-		"pi-lens effective config",
-		`server: ${config.serverPath}`,
-		`cwd: ${config.cwd}`,
-		`includeTools: ${config.includeTools.length === 0 ? "(all)" : config.includeTools.join(", ")}`,
-		`excludeTools: ${config.excludeTools.length === 0 ? "(none)" : config.excludeTools.join(", ")}`,
-		`startupTimeoutMs: ${config.startupTimeoutMs}`,
-		`requestTimeoutMs: ${config.requestTimeoutMs}`,
-		`restartOnCrash: ${config.restartOnCrash}`,
-		`maxRestarts: ${config.maxRestarts}`,
-		`maxTextChars: ${config.maxTextChars}`,
-		`env keys: ${config.envKeys.length === 0 ? "(none)" : config.envKeys.join(", ")}`,
-		`debug: ${config.debug}`,
-	].join("\n");
-}
-
 function resultText(result: McpCallResult): string {
-	return result.content
+	return (result.content ?? [])
 		.map((block) =>
 			typeof block.text === "string" ? block.text : JSON.stringify(block),
 		)

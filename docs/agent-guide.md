@@ -325,7 +325,8 @@ Verified in `index.ts`:
 pi-lens is also an MCP server. The same capabilities are mirrored under a `pilens_`
 prefix: `pilens_diagnostics`, `pilens_analyze`, `pilens_module_report`,
 `pilens_symbol_search`, `pilens_read_symbol`, `pilens_read_enclosing`,
-`pilens_project_report`, `pilens_project_scan`, `pilens_lsp_navigation`,
+`pilens_project_report`, `pilens_project_map`, `pilens_project_scan`,
+`pilens_lsp_navigation`,
 `pilens_ast_grep_search`/`pilens_ast_grep_replace`,
 `pilens_session_start`/`pilens_turn_end`, `pilens_health`, `pilens_latency`,
 `pilens_rebuild` (source checkouts only). Note MCP has **no read-guard** — mirror reads

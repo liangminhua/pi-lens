@@ -123,6 +123,7 @@ New files:
 | `pilens_lsp_navigation` | `lsp_navigation` | IDE-style LSP navigation. |
 | `pilens_module_report` | `module_report` | navigable module outline and dependents. |
 | `pilens_project_report` | `project_report` | project-level structure and diagnostics report. |
+| `pilens_project_map` | `generateLensMap` | write the interactive HTML file-level dependency map and return its path plus counts. |
 | `pilens_read_enclosing` | `read_enclosing` | read the smallest enclosing symbol or callback. |
 | `pilens_read_symbol` | `read_symbol` | read one symbol body. |
 | `pilens_rebuild` | `npm run build:dist` | rebuild dist so `fresh` reflects the latest commit. Makes the loop self-contained. |

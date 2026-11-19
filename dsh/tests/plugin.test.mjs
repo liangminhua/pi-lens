@@ -92,7 +92,7 @@ test("apply registers the status tool and every advertised MCP capability", asyn
 		assert.match(status, /lifecycle: ACTIVE/);
 		await waitFor(async () => /engine: ready/.test(await readStatus(harness)));
 		assert.match(await readStatus(harness), /protocol: 2025-06-18/);
-		assert.match(await readStatus(harness), /tools: 6/);
+		assert.match(await readStatus(harness), /tools: 7/);
 	} finally {
 		await harness.dispose();
 	}

@@ -86,8 +86,8 @@ test("registers six pi-lens slash commands", async () => {
 		await waitFor(() => harness.tools.has("pilens_echo"));
 
 		assert.deepEqual([...harness.commands.keys()].sort(), [
-			"lens-config",
 			"lens-health",
+			"lens-map",
 			"lens-restart",
 			"lens-status",
 			"lens-toggle",
@@ -102,7 +102,7 @@ test("registers six pi-lens slash commands", async () => {
 	assert.equal(harness.commands.size, 0, "unload must unregister commands");
 });
 
-test("status, tools, and config commands report adapter state", async () => {
+test("status, tools, and map commands report adapter state", async () => {
 	const harness = createCommandHarness();
 	try {
 		apply(
@@ -111,7 +111,6 @@ test("status, tools, and config commands report adapter state", async () => {
 				serverPath: server,
 				cwd: fixtures,
 				restartOnCrash: false,
-				env: { SECRET_TOKEN: "super-secret-value" },
 			}),
 		);
 		await waitFor(() => harness.tools.has("pilens_echo"));
@@ -124,17 +123,14 @@ test("status, tools, and config commands report adapter state", async () => {
 
 		const tools = await invoke(harness.commands, "lens-tools");
 		assert.equal(tools.kind, "success");
-		assert.match(tools.text, /pi-lens tools \(5 registered\)/);
+		assert.match(tools.text, /pi-lens tools \(6 registered\)/);
 		assert.match(tools.text, /pilens_echo/);
 		assert.ok(!tools.text.includes("run_code"), "reserved names stay hidden");
 
-		const config = await invoke(harness.commands, "lens-config");
-		assert.equal(config.kind, "success");
-		assert.match(config.text, /env keys: SECRET_TOKEN/);
-		assert.ok(
-			!config.text.includes("super-secret-value"),
-			"environment values must stay redacted",
-		);
+		const map = await invoke(harness.commands, "lens-map");
+		assert.equal(map.kind, "success");
+		assert.match(map.text, /Project map: 3 file\(s\), 2 edge\(s\)/);
+		assert.match(map.text, /fake-lens-map\.html/);
 	} finally {
 		await harness.dispose();
 	}
@@ -204,7 +200,7 @@ test("restart re-runs the handshake and keeps tools available", async () => {
 		const restarted = await invoke(harness.commands, "lens-restart");
 		assert.equal(restarted.kind, "success");
 		assert.match(restarted.text, /engine: ready/);
-		assert.match(restarted.text, /tools: 6/);
+		assert.match(restarted.text, /tools: 7/);
 
 		const echoed = await harness.tools
 			.get("pilens_echo")

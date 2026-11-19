@@ -44,6 +44,7 @@ test("MCP client completes initialize, tools/list and tools/call", async () => {
 				"pilens_echo",
 				"pilens_fail",
 				"pilens_navigate",
+				"pilens_project_map",
 				"pilens_slow",
 				"run_code",
 			].sort(),

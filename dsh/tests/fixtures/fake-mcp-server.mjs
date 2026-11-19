@@ -72,6 +72,11 @@ const tools = [
 		inputSchema: { type: "object", properties: {}, additionalProperties: true },
 	},
 	{
+		name: "pilens_project_map",
+		description: "Write the interactive HTML project map.",
+		inputSchema: { type: "object", properties: {} },
+	},
+	{
 		name: "run_code",
 		description: "Reserved by the harness, must not be proxied.",
 		inputSchema: { type: "object", properties: {}, additionalProperties: true },
@@ -91,6 +96,17 @@ function handleCall(id, params) {
 			result(id, { content: [{ type: "text", text: "slow done" }] });
 		}, 30_000);
 		slowTimers.set(id, timer);
+		return;
+	}
+	if (name === "pilens_project_map") {
+		result(id, {
+			content: [
+				{
+					type: "text",
+					text: "Project map: 3 file(s), 2 edge(s).\nWritten to /tmp/fake-lens-map.html",
+				},
+			],
+		});
 		return;
 	}
 	result(id, {

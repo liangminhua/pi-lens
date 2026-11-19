@@ -43,13 +43,14 @@ Six commands are registered through the `commands` service and appear in the
 | `/lens-toggle` | Enable or disable adapter tool calls (`on` / `off`; empty toggles) |
 | `/lens-tools` | List the MCP capabilities exposed as DSH tools |
 | `/lens-restart` | Restart the engine and re-run the MCP handshake |
-| `/lens-config` | Effective config; environment keys are shown, values stay redacted |
+| `/lens-map` | Build the interactive HTML dependency map and print where it was written |
 
 The command surface maps the portable pi commands (`lens-health`, `lens-toggle`,
-`lens-tools`) and replaces the pi-only UI commands (`lens-map`,
-`lens-widget-toggle`, `lens-allow-edit`) with DSH-native equivalents. Map
-generation and the pi TUI widget have no DSH counterpart; use
-`pilens_project_report` for structured project data.
+`lens-tools`, `lens-map`) and replaces the pi-only UI commands
+(`lens-widget-toggle`, `lens-allow-edit`) with DSH-native equivalents. `/lens-map`
+delegates to the engine's `pilens_project_map` tool, which writes the same
+self-contained HTML artifact pi's `lens-map` command produces; the pi TUI widget
+has no DSH counterpart.
 
 ## Configuration
 
@@ -123,7 +124,7 @@ The suite covers:
 
 - MCP framing, handshake, cancellation, timeouts, and child cleanup.
 - Plugin contract, tool registration, schema projection, filters, and unload.
-- Six slash commands, including toggle enforcement and config redaction.
+- Six slash commands, including toggle enforcement and map-artifact delegation.
 - Real Cordis host load/call/unload where DSH packages are installed.
 - A fake MCP server with deterministic slow, failing, and read-only tools.
 - Tool-catalog and schema-depth performance bounds.
