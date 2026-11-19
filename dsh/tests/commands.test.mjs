@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -15,6 +17,13 @@ function createCommandHarness() {
 	const tools = new Map();
 	const commands = new Map();
 	const disposers = [];
+	const listeners = new Map();
+	const on = (event, listener) => {
+		const set = listeners.get(event) ?? new Set();
+		set.add(listener);
+		listeners.set(event, set);
+		return () => set.delete(listener);
+	};
 	const registry = {
 		register(definition) {
 			if (commands.has(definition.name)) {
@@ -47,15 +56,41 @@ function createCommandHarness() {
 			disposers.push(dispose);
 			return dispose;
 		},
+		on,
+		off(event, listener) {
+			listeners.get(event)?.delete(listener);
+		},
 	};
 	return {
 		ctx,
 		tools,
 		commands,
+		pre(exec) {
+			return waterfall(listeners, "tools/pre-execute", [exec], {
+				kind: "allow",
+			});
+		},
+		post(exec, result) {
+			return waterfall(listeners, "tools/post-execute", [exec, result], {
+				kind: "accept",
+			});
+		},
 		async dispose() {
 			for (const dispose of disposers.reverse()) await dispose?.();
 		},
 	};
+}
+
+/** Run a recorded waterfall chain, innermost `next()` returning `terminal`. */
+function waterfall(listeners, event, args, terminal) {
+	const chain = [...(listeners.get(event) ?? [])];
+	let call = async () => terminal;
+	for (let index = chain.length - 1; index >= 0; index -= 1) {
+		const listener = chain[index];
+		const downstream = call;
+		call = () => listener(...args, downstream);
+	}
+	return call();
 }
 
 async function waitFor(predicate, timeoutMs = 8_000) {
@@ -67,16 +102,17 @@ async function waitFor(predicate, timeoutMs = 8_000) {
 	throw new Error("timed out waiting for condition");
 }
 
-function invoke(commands, name, rawInput = "") {
+function invoke(commands, name, rawInput = "", agent) {
 	const definition = commands.get(name);
 	assert.ok(definition, `missing command ${name}`);
 	return definition.handler({
 		rawInput,
 		signal: new AbortController().signal,
+		agent,
 	});
 }
 
-test("registers six pi-lens slash commands", async () => {
+test("registers seven pi-lens slash commands", async () => {
 	const harness = createCommandHarness();
 	try {
 		apply(
@@ -86,6 +122,7 @@ test("registers six pi-lens slash commands", async () => {
 		await waitFor(() => harness.tools.has("pilens_echo"));
 
 		assert.deepEqual([...harness.commands.keys()].sort(), [
+			"lens-allow-edit",
 			"lens-health",
 			"lens-map",
 			"lens-restart",
@@ -211,5 +248,80 @@ test("restart re-runs the handshake and keeps tools available", async () => {
 		assert.match(echoed.text, /after-restart/);
 	} finally {
 		await harness.dispose();
+	}
+});
+
+test("allow-edit arms a one-shot, per-agent read-guard exemption", async () => {
+	const workspace = fs.mkdtempSync(
+		path.join(os.tmpdir(), "pi-lens-dsh-guard-"),
+	);
+	const target = path.join(workspace, "target.txt");
+	const other = path.join(workspace, "other.txt");
+	fs.writeFileSync(target, "one\n");
+	fs.writeFileSync(other, "two\n");
+
+	const harness = createCommandHarness();
+	try {
+		apply(
+			harness.ctx,
+			Config({ serverPath: server, cwd: workspace, restartOnCrash: false }),
+		);
+		await waitFor(() => harness.tools.has("pilens_echo"));
+
+		const editTarget = { name: "edit", arguments: { file_path: target } };
+		const denied = await harness.pre(editTarget);
+		assert.equal(denied.kind, "deny");
+		assert.match(denied.reason, /Edit without read/);
+
+		await harness.post(
+			{ name: "read", arguments: { file_path: target } },
+			{ isError: false },
+		);
+		assert.equal((await harness.pre(editTarget)).kind, "allow");
+
+		const agentA = { id: "agent-a" };
+		const agentB = { id: "agent-b" };
+		const editOther = (agent) => ({
+			name: "edit",
+			arguments: { file_path: other },
+			agent,
+		});
+
+		assert.equal((await harness.pre(editOther(agentA))).kind, "deny");
+
+		const armed = await invoke(
+			harness.commands,
+			"lens-allow-edit",
+			other,
+			agentA,
+		);
+		assert.equal(armed.kind, "success");
+		assert.ok(armed.text.includes(other));
+
+		assert.equal(
+			(await harness.pre(editOther(agentB))).kind,
+			"deny",
+			"exemptions stay per agent",
+		);
+		assert.equal((await harness.pre(editOther(agentA))).kind, "allow");
+		assert.equal(
+			(await harness.pre(editOther(agentA))).kind,
+			"deny",
+			"exemption is one-shot",
+		);
+
+		const usage = await invoke(harness.commands, "lens-allow-edit", "   ");
+		assert.equal(usage.kind, "error");
+		assert.match(usage.text, /Usage:/);
+
+		await invoke(harness.commands, "lens-toggle", "off");
+		assert.equal(
+			(await harness.pre(editOther(agentB))).kind,
+			"allow",
+			"disabled adapter stops guarding",
+		);
+	} finally {
+		await harness.dispose();
+		fs.rmSync(workspace, { recursive: true, force: true });
 	}
 });

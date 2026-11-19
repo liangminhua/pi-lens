@@ -24,6 +24,11 @@ import {
 } from "./commands.js";
 import { PluginLifecycle, type PluginLifecycleState } from "./lifecycle.js";
 import {
+	installReadGuard,
+	ReadGuard,
+	type ReadGuardHost,
+} from "./read-guard.js";
+import {
 	buildChildEnv,
 	type McpCallResult,
 	McpStdioClient,
@@ -46,7 +51,7 @@ export const adapterVersion = "1.0.0";
  * supplies the real context; this declaration keeps the build independent of
  * the harness's private type graph.
  */
-export interface PluginContext extends CommandHost {
+export interface PluginContext extends CommandHost, ReadGuardHost {
 	effect(
 		factory: () => void | (() => void | Promise<void>),
 		label?: string,
@@ -425,6 +430,11 @@ export function apply(ctx: PluginContext, config: Config): void {
 		};
 
 		register(createStatusTool(runtime));
+		const readGuard = new ReadGuard(resolveWorkspace(config));
+		const disposeGuard = installReadGuard(ctx, {
+			guard: readGuard,
+			isEnabled: () => runtime.isEnabled(),
+		});
 		const commandView: PiLensCommandRuntime = {
 			status: () => runtime.status(),
 			statusText: () => renderStatus(runtime.status()),
@@ -434,6 +444,7 @@ export function apply(ctx: PluginContext, config: Config): void {
 			restart: () => runtime.restart(),
 			callTool: (toolName, args, signal) =>
 				runtime.callTool(toolName, args, signal),
+			allowEdit: (rawPath, agent) => readGuard.allowOnce(agent, rawPath),
 		};
 		const disposeCommands = installCommands(ctx, commandView);
 		lifecycle.transition("ACTIVE");
@@ -449,6 +460,7 @@ export function apply(ctx: PluginContext, config: Config): void {
 			}
 			await runtime.dispose();
 			disposeCommands?.();
+			disposeGuard();
 			for (const dispose of disposers.reverse()) {
 				try {
 					dispose();

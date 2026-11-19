@@ -32,6 +32,8 @@ export interface PiLensCommandRuntime {
 		args: Record<string, unknown>,
 		signal?: AbortSignal,
 	): Promise<McpCallResult>;
+	/** Arm a one-shot read-guard exemption; returns the resolved path. */
+	allowEdit(rawPath: string, agent: unknown): string | undefined;
 }
 
 interface DshCommandResult {
@@ -42,6 +44,8 @@ interface DshCommandResult {
 interface DshCommandInvocation {
 	readonly rawInput: string;
 	readonly signal: AbortSignal;
+	/** Invoking agent; present on the real DSH command service. */
+	readonly agent?: unknown;
 }
 
 interface DshCommandDefinition {
@@ -161,6 +165,18 @@ function createDefinitions(
 			handler: async () => {
 				await runtime.restart();
 				return success(runtime.statusText());
+			},
+		},
+		{
+			name: "lens-allow-edit",
+			description:
+				"pi-lens: allow one edit without a prior read (`<path>`; empty prints usage).",
+			input: { hint: "<path>" },
+			handler: (invocation) => {
+				const target = runtime.allowEdit(invocation.rawInput, invocation.agent);
+				return target
+					? success(`Read guard override armed for next edit: ${target}`)
+					: failure("Usage: /lens-allow-edit <path>");
 			},
 		},
 		{

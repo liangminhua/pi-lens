@@ -33,7 +33,7 @@ harness never imports pi host packages such as `@earendil-works/pi-tui`.
 
 ## Slash commands
 
-Six commands are registered through the `commands` service and appear in the
+Seven commands are registered through the `commands` service and appear in the
 `/` palette. They run immediately and are never sent to the model.
 
 | Command | Purpose |
@@ -44,13 +44,31 @@ Six commands are registered through the `commands` service and appear in the
 | `/lens-tools` | List the MCP capabilities exposed as DSH tools |
 | `/lens-restart` | Restart the engine and re-run the MCP handshake |
 | `/lens-map` | Build the interactive HTML dependency map and print where it was written |
+| `/lens-allow-edit` | Allow one edit without a prior read (`<path>`) |
 
 The command surface maps the portable pi commands (`lens-health`, `lens-toggle`,
-`lens-tools`, `lens-map`) and replaces the pi-only UI commands
-(`lens-widget-toggle`, `lens-allow-edit`) with DSH-native equivalents. `/lens-map`
-delegates to the engine's `pilens_project_map` tool, which writes the same
-self-contained HTML artifact pi's `lens-map` command produces; the pi TUI widget
-has no DSH counterpart.
+`lens-tools`, `lens-map`, `lens-allow-edit`) onto DSH. `/lens-map` delegates to
+the engine's `pilens_project_map` tool, which writes the same self-contained HTML
+artifact pi's `lens-map` command produces. `lens-widget-toggle` is pi-TUI-only:
+DSH exposes no host-side widget API, so there is no counterpart.
+
+## Read-before-edit guard
+
+DSH ships no read-before-edit protection (its filesystem tools only compare
+observed versions before writing). The adapter implements the pi guard through
+the tools event pipeline:
+
+- `tools/post-execute` records successful `read` calls (and `str_replace_editor`
+  `view`) per agent. A successful `write`/`edit` also marks its target as known,
+  so a freshly created file can be edited without a second read.
+- `tools/pre-execute` denies `write`, `edit`, `apply_patch` update hunks and
+  mutating `str_replace_editor` commands when the target exists and has not been
+  read by that agent. New files are always allowed.
+- `/lens-allow-edit <path>` arms a one-shot, per-agent exemption that is consumed
+  by the next matching edit.
+
+The guard follows `/lens-toggle`: disabling the adapter stops intercepting.
+Shell-based writes are not intercepted, matching pi's tool-name classification.
 
 ## Configuration
 

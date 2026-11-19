@@ -240,6 +240,8 @@
 				"Config",
 				"ctx.effect",
 				"ctx.tools.register",
+				"ctx.on(tools/pre-execute)",
+				"ctx.on(tools/post-execute)",
 				"ctx.inject(commands)",
 				"ctx.commands.register"
 			],
